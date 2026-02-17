@@ -10,7 +10,7 @@ from eth_utils import to_bytes
 AGENT_ID = 16662  # agent kamu
 RPC_URL = "https://mainnet.base.org"  # Base Mainnet RPC
 
-# Alamat ProblemManager resmi AgentCoin
+# Alamat ProblemManager resmi AgentCoin (checksum format)
 PROBLEM_MANAGER_ADDRESS = Web3.to_checksum_address("0x7D563ae2881D2fC72f5f4c66334c079B4Cc051c6")
 
 # PRIVATE_KEY dari Railway Environment Variable
@@ -26,7 +26,7 @@ account = w3.eth.account.from_key(PRIVATE_KEY)
 address = account.address
 print("Using wallet:", address)
 
-# Minimal ABI untuk submitAnswer (fix Web3.py terbaru)
+# Minimal ABI untuk submitAnswer
 PROBLEM_MANAGER_ABI = [
     {
         "constant": False,
@@ -57,18 +57,15 @@ def solve_problem(N):
     return total % mod
 
 # ==========================
-# SUBMIT ANSWER
+# SUBMIT ANSWER (Web3.py v6+)
 # ==========================
 def submit_answer(problem_id, answer_int):
     try:
         answer_bytes32 = to_bytes(answer_int).rjust(32, b'\0')
-        tx = contract.functions.submitAnswer(problem_id, answer_bytes32).buildTransaction({
-            "from": address,
-            "nonce": w3.eth.get_transaction_count(address),
-            "gas": 300000,
-            "gasPrice": w3.eth.gas_price
-        })
-        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+        tx = contract.functions.submitAnswer(problem_id, answer_bytes32).transaction(
+            {'from': address, 'gas': 300000, 'gasPrice': w3.eth.gas_price}
+        )
+        signed_tx = w3.eth.account.sign_transaction(tx, PRIVATE_KEY)
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
         print("Submitted tx:", tx_hash.hex())
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
