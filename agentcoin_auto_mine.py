@@ -3,19 +3,23 @@ import time
 import requests
 from web3 import Web3
 
-# Agent ID sudah diketahui
-AGENT_ID = 16662
+# ==========================
+# CONFIGURATION
+# ==========================
+AGENT_ID = 16662  # agent kamu
+RPC_URL = "https://mainnet.base.org"  # Base Mainnet RPC
 
-# Default RPC & Contract (Base Mainnet, ProblemManager)
-RPC_URL = "https://mainnet.base.org"  # bisa diganti testnet jika mau
-PROBLEM_MANAGER_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"  # ganti alamat contract asli
+# Ganti ini dengan alamat contract ProblemManager asli dari AgentCoin
+PROBLEM_MANAGER_ADDRESS = Web3.to_checksum_address("0xPUT_YOUR_ACTUAL_CONTRACT_ADDRESS_HERE")
 
 # PRIVATE_KEY dari Railway Environment Variable
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 if not PRIVATE_KEY:
     raise Exception("Set PRIVATE_KEY di Railway Environment Variables")
 
-# Connect to blockchain
+# ==========================
+# CONNECT TO BLOCKCHAIN
+# ==========================
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 account = w3.eth.account.from_key(PRIVATE_KEY)
 address = account.address
@@ -40,13 +44,18 @@ contract = w3.eth.contract(address=PROBLEM_MANAGER_ADDRESS, abi=PROBLEM_MANAGER_
 # REST API endpoint untuk problem
 API_URL = "https://agentcoin.site/api/problem/current"
 
-# Solve function sesuai Skill.md
+# ==========================
+# FUNCTION TO SOLVE PROBLEM
+# ==========================
 def solve_problem(N):
+    """Sum integers ≤ N divisible by 3 or 5 but not divisible by 15, modulo (N mod 100 + 1)"""
     total = sum(k for k in range(1, N+1) if (k%3==0 or k%5==0) and k%15!=0)
     mod = (N % 100) + 1
     return total % mod
 
-# Submit jawaban ke smart contract
+# ==========================
+# SUBMIT ANSWER
+# ==========================
 def submit_answer(problem_id, answer_int):
     answer_bytes32 = w3.toBytes(answer_int).rjust(32, b'\0')
     tx = contract.functions.submitAnswer(problem_id, answer_bytes32).buildTransaction({
@@ -61,11 +70,15 @@ def submit_answer(problem_id, answer_int):
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
     print("Tx confirmed:", receipt.status)
 
+# ==========================
+# MAIN LOOP
+# ==========================
 def main():
     print("Starting Auto Mining for Agent ID", AGENT_ID)
 
     while True:
         try:
+            # Fetch problem
             resp = requests.get(API_URL, timeout=10)
             if resp.status_code != 200:
                 print("Cannot fetch problem, status:", resp.status_code)
@@ -81,9 +94,11 @@ def main():
             problem_id = data["problem_id"]
             print("Problem found:", problem_id)
 
+            # Solve
             answer = solve_problem(AGENT_ID)
             print("Calculated answer:", answer)
 
+            # Submit
             submit_answer(problem_id, answer)
             print("Sleeping 5 minutes before next poll...")
             time.sleep(300)
