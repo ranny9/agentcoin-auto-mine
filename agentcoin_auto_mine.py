@@ -9,8 +9,8 @@ from web3 import Web3
 AGENT_ID = 16662  # agent kamu
 RPC_URL = "https://mainnet.base.org"  # Base Mainnet RPC
 
-# Ganti ini dengan alamat contract ProblemManager asli dari AgentCoin
-PROBLEM_MANAGER_ADDRESS = Web3.to_checksum_address("0xPUT_YOUR_ACTUAL_CONTRACT_ADDRESS_HERE")
+# Alamat ProblemManager resmi AgentCoin
+PROBLEM_MANAGER_ADDRESS = Web3.to_checksum_address("0x7D563ae2881D2fC72f5f4c66334c079B4Cc051c6")
 
 # PRIVATE_KEY dari Railway Environment Variable
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
