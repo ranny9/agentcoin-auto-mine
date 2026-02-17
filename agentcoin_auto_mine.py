@@ -2,18 +2,15 @@ import os
 import time
 import requests
 from web3 import Web3
-from eth_utils import to_bytes
 
 # ==========================
 # CONFIGURATION
 # ==========================
-AGENT_ID = 16662  # agent kamu
-RPC_URL = "https://mainnet.base.org"  # Base Mainnet RPC
-
-# Alamat ProblemManager resmi AgentCoin (checksum format)
-PROBLEM_MANAGER_ADDRESS = Web3.to_checksum_address("0x7D563ae2881D2fC72f5f4c66334c079B4Cc051c6")
-
-# PRIVATE_KEY dari Railway Environment Variable
+AGENT_ID = int(os.getenv("AGENT_ID", "16662"))  # Agent ID
+RPC_URL = os.getenv("RPC_URL", "https://mainnet.base.org")  # Base Mainnet RPC
+PROBLEM_MANAGER_ADDRESS = Web3.to_checksum_address(
+    os.getenv("PROBLEM_MANAGER_ADDRESS", "0x7D563ae2881D2fC72f5f4c66334c079B4Cc051c6")
+)
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 if not PRIVATE_KEY:
     raise Exception("Set PRIVATE_KEY di Railway Environment Variables")
@@ -34,11 +31,11 @@ PROBLEM_MANAGER_ABI = [
             {"name": "problemId", "type": "uint256"},
             {"name": "answer", "type": "bytes32"}
         ],
-        "name": "submitAnswer",
+        "name":"submitAnswer",
         "outputs": [],
         "payable": False,
         "stateMutability": "nonpayable",
-        "type": "function"
+        "type":"function"
     }
 ]
 
@@ -52,20 +49,25 @@ API_URL = "https://agentcoin.site/api/problem/current"
 # ==========================
 def solve_problem(N):
     """Sum integers ≤ N divisible by 3 or 5 but not divisible by 15, modulo (N mod 100 + 1)"""
-    total = sum(k for k in range(1, N+1) if (k%3==0 or k%5==0) and k%15!=0)
+    total = sum(k for k in range(1, N+1) if (k % 3 == 0 or k % 5 == 0) and k % 15 != 0)
     mod = (N % 100) + 1
     return total % mod
 
 # ==========================
-# SUBMIT ANSWER (Web3.py v6+)
+# SUBMIT ANSWER
 # ==========================
 def submit_answer(problem_id, answer_int):
     try:
-        answer_bytes32 = to_bytes(answer_int).rjust(32, b'\0')
-        tx = contract.functions.submitAnswer(problem_id, answer_bytes32).transaction(
-            {'from': address, 'gas': 300000, 'gasPrice': w3.eth.gas_price}
-        )
-        signed_tx = w3.eth.account.sign_transaction(tx, PRIVATE_KEY)
+        # encode jawaban ke bytes32
+        answer_bytes32 = answer_int.to_bytes(32, 'big')
+        # build transaction
+        tx = contract.functions.submitAnswer(problem_id, answer_bytes32).buildTransaction({
+            "from": address,
+            "nonce": w3.eth.get_transaction_count(address),
+            "gas": 300000,
+            "gasPrice": w3.eth.gas_price
+        })
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
         tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
         print("Submitted tx:", tx_hash.hex())
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -78,10 +80,8 @@ def submit_answer(problem_id, answer_int):
 # ==========================
 def main():
     print("Starting Auto Mining for Agent ID", AGENT_ID)
-
     while True:
         try:
-            # Fetch problem
             resp = requests.get(API_URL, timeout=10)
             if resp.status_code != 200:
                 print("Cannot fetch problem, status:", resp.status_code)
@@ -97,13 +97,10 @@ def main():
             problem_id = data["problem_id"]
             print("Problem found:", problem_id)
 
-            # Solve
             answer = solve_problem(AGENT_ID)
             print("Calculated answer:", answer)
 
-            # Submit
             submit_answer(problem_id, answer)
-
             print("Sleeping 5 minutes before next poll...")
             time.sleep(300)
 
