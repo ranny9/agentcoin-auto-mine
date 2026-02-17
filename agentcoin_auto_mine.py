@@ -26,17 +26,19 @@ account = w3.eth.account.from_key(PRIVATE_KEY)
 address = account.address
 print("Using wallet:", address)
 
-# Minimal ABI untuk submitAnswer
+# Minimal ABI untuk submitAnswer (fix Web3.py terbaru)
 PROBLEM_MANAGER_ABI = [
     {
+        "constant": False,
         "inputs": [
-            {"internalType": "uint256","name":"problemId","type":"uint256"},
-            {"internalType": "bytes32","name":"answer","type":"bytes32"}
+            {"name": "problemId", "type": "uint256"},
+            {"name": "answer", "type": "bytes32"}
         ],
-        "name":"submitAnswer",
-        "outputs":[],
-        "stateMutability":"nonpayable",
-        "type":"function"
+        "name": "submitAnswer",
+        "outputs": [],
+        "payable": False,
+        "stateMutability": "nonpayable",
+        "type": "function"
     }
 ]
 
@@ -58,19 +60,21 @@ def solve_problem(N):
 # SUBMIT ANSWER
 # ==========================
 def submit_answer(problem_id, answer_int):
-    # Fix Web3.toBytes error by using eth_utils.to_bytes
-    answer_bytes32 = to_bytes(answer_int).rjust(32, b'\0')
-    tx = contract.functions.submitAnswer(problem_id, answer_bytes32).buildTransaction({
-        "from": address,
-        "nonce": w3.eth.get_transaction_count(address),
-        "gas": 300000,
-        "gasPrice": w3.eth.gas_price
-    })
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    print("Submitted tx:", tx_hash.hex())
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    print("Tx confirmed:", receipt.status)
+    try:
+        answer_bytes32 = to_bytes(answer_int).rjust(32, b'\0')
+        tx = contract.functions.submitAnswer(problem_id, answer_bytes32).buildTransaction({
+            "from": address,
+            "nonce": w3.eth.get_transaction_count(address),
+            "gas": 300000,
+            "gasPrice": w3.eth.gas_price
+        })
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        print("Submitted tx:", tx_hash.hex())
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+        print("Tx confirmed:", receipt.status)
+    except Exception as e:
+        print("Submit error:", e)
 
 # ==========================
 # MAIN LOOP
@@ -102,6 +106,7 @@ def main():
 
             # Submit
             submit_answer(problem_id, answer)
+
             print("Sleeping 5 minutes before next poll...")
             time.sleep(300)
 
