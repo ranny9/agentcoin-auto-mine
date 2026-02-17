@@ -2,6 +2,7 @@ import os
 import time
 import requests
 from web3 import Web3
+from eth_utils import to_bytes
 
 # ==========================
 # CONFIGURATION
@@ -57,7 +58,8 @@ def solve_problem(N):
 # SUBMIT ANSWER
 # ==========================
 def submit_answer(problem_id, answer_int):
-    answer_bytes32 = w3.toBytes(answer_int).rjust(32, b'\0')
+    # Fix Web3.toBytes error by using eth_utils.to_bytes
+    answer_bytes32 = to_bytes(answer_int).rjust(32, b'\0')
     tx = contract.functions.submitAnswer(problem_id, answer_bytes32).buildTransaction({
         "from": address,
         "nonce": w3.eth.get_transaction_count(address),
